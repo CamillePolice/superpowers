@@ -1,6 +1,6 @@
 ---
 name: verification-before-completion
-description: Use when about to claim work is complete, fixed, or passing, before committing or creating PRs - requires running verification commands and confirming output before making any success claims; evidence before assertions always
+description: Use when about to claim work is complete, fixed, or passing, before committing or creating PRs — requires running the app at its real surface and confirming observed output before making any success claims; evidence before assertions always
 ---
 
 # Verification Before Completion
@@ -10,6 +10,12 @@ description: Use when about to claim work is complete, fixed, or passing, before
 Claiming work is complete without verification is dishonesty, not efficiency.
 
 **Core principle:** Evidence before claims, always.
+
+**Verification is runtime observation.** You build the app, run it, drive it to where the changed code executes, and capture what you see. That capture is your evidence. Nothing else is.
+
+**Don't run tests. Don't typecheck.** Running them here proves you can run CI — not that the change works. Not as a warm-up, not "just to be sure," not as a regression sweep after. The time goes to running the app instead.
+
+**Don't import-and-call.** `import { foo } from './src/...'` then `console.log(foo(x))` is a unit test you wrote. The function did what the function does — you knew that from reading it. The app never ran. Whatever calls `foo` in the real codebase ends at a CLI, a socket, or a window. Go there.
 
 **Violating the letter of this rule is violating the spirit of this rule.**
 
@@ -26,59 +32,147 @@ If you haven't run the verification command in this message, you cannot claim it
 ```
 BEFORE claiming any status or expressing satisfaction:
 
-1. IDENTIFY: What command proves this claim?
-2. RUN: Execute the FULL command (fresh, complete)
-3. READ: Full output, check exit code, count failures
-4. VERIFY: Does output confirm the claim?
+1. IDENTIFY: What surface proves this claim? (CLI, server, GUI, library boundary)
+2. FIND THE CHANGE: Establish diff scope (see below)
+3. GET A HANDLE: Check .claude/skills/ for a verifier-* skill first
+4. DRIVE IT: Smallest path that makes the changed code execute at its real surface
+5. READ: Full output, captured — stdout, response bodies, screenshots
+6. VERIFY: Does output confirm the claim?
    - If NO: State actual status with evidence
    - If YES: State claim WITH evidence
-5. ONLY THEN: Make the claim
+7. ONLY THEN: Make the claim
 
 Skip any step = lying, not verifying
 ```
+
+## Find the Change
+
+The scope is what you're verifying — usually a diff, sometimes just "does X work." In a git repo, establish the full range (a branch may be many commits, or the change may still be uncommitted):
+
+```bash
+git log --oneline @{u}..              # count commits (if upstream set)
+git diff @{u}.. --stat                # full range, not HEAD~1
+git diff origin/HEAD... --stat        # no upstream: committed vs base
+git diff HEAD --stat                  # uncommitted: working tree vs HEAD
+gh pr diff                            # if in a PR context
+```
+
+State the commit count. Large diff truncating? Redirect to a file then Read it. Repo but no diff from any of these → say so, stop. **No repo → the scope is whatever the user named; ask if they didn't.**
+
+**The diff is ground truth. Any description is a claim about it.** Read both. If they disagree, that's a finding.
+
+## Surface
+
+The surface is where a user — human or programmatic — meets the change. That's where you observe.
+
+| Change reaches | Surface | You |
+|---|---|---|
+| CLI / TUI | terminal | type the command, capture the pane |
+| Server / API | socket | send the request, capture the response |
+| GUI | pixels | drive it under xvfb/Playwright, screenshot |
+| Library | package boundary | sample code through the public export — `import pkg`, not `import ./src/...` |
+| Prompt / agent config | the agent | run the agent, capture its behavior |
+| CI workflow | Actions | dispatch it, read the run |
+
+**Internal function? Not a surface.** Something in the repo calls it and that caller ends at one of the rows above. Follow it there.
+
+**No runtime surface at all** — docs-only, type declarations with no emit, build config that produces no behavioral diff — report **SKIP — no runtime surface: (reason).** Don't run tests to fill the space.
+
+**Tests in the diff are the author's evidence, not a surface.** CI runs them. You'd be re-running CI. Tests-only PR → SKIP, one line. Mixed src+tests → verify the src, ignore the test files. Reading a test to learn what to check is fine — it's a spec. But then go run the app.
+
+## Get a Handle
+
+**Check `.claude/skills/` first — even if you already know how to build and run.** A matching `verifier-*` skill is the repo's evidence-capture protocol.
+
+```bash
+ls .claude/skills/
+```
+
+- **`verifier-*` matching your surface** → invoke it with the Skill tool and follow its setup. Mismatched surface → skip that one, try the next. Stale verifier (fails on mechanics unrelated to the change) → ask the user whether to patch it; don't FAIL the change for verifier rot.
+- **`run-*` but no matching verifier** → use its build/launch primitives as your handle.
+- **Neither** → cold start from README/package.json/Makefile. Timebox ~15min. Stuck → BLOCKED with exactly where. Got through → note the working build/launch recipe so it can become a `verifier-*` skill.
+
+## Drive It
+
+Smallest path that makes the changed code execute:
+
+- Changed a flag? Run with it.
+- Changed a handler? Hit that route.
+- Changed error handling? Trigger the error.
+- Changed an internal function? Find the CLI command / request / render that reaches it. Run that.
+
+**Read your plan back before running.** If every step is build / typecheck / run test file — you've planned a CI rerun, not a verification. Find a step that reaches the surface or report BLOCKED.
+
+**End-to-end, through the real interface.** Pieces passing in isolation doesn't mean the flow works — seams are where bugs hide. If users click buttons, test by clicking buttons, not by curling the API underneath.
+
+**Destructive path?** If the change touches code that deletes, publishes, sends, or writes outside the workspace and there's no dry-run or safe target, don't drive it live. Verify what you can around it and say which path you didn't exercise and why.
+
+## Push on It
+
+The claim checked out — that's the first half. Confirming is step one, not the job. The description is what the author intended; your value is what they didn't.
+
+You know exactly what changed. Probe *around* it, at the same surface you just drove:
+
+- **New flag / option** → empty value, passed twice, combined with a conflicting flag, typo'd (does the error name it?)
+- **New handler / route** → wrong method, malformed body, missing required field, oversized payload
+- **Changed error path** → the adjacent errors it didn't touch — did the refactor catch them too, or only the one in the diff?
+- **Interactive / TUI** → Ctrl-C mid-op, resize the pane, paste garbage, rapid-fire the key, Esc at the wrong moment
+- **State / persistence** → do it twice, do it with stale state underneath, do it in two sessions at once
+- **Wander** → what's adjacent? What looked off while you were confirming? Go back to it.
+
+These aren't a checklist — pick the ones the change points at. Stop when you've covered the obvious adjacents or hit something worth a warning. Still not a test run. You're at the surface, typing what a user would type wrong.
+
+## Capture
+
+Stdout, response bodies, screenshots, pane dumps. Captured output is evidence; your memory isn't. Something unexpected? Don't route around it — capture, note, decide if it's the change or the environment. Unrelated breakage is a finding, not noise.
+
+Shared process state (tmux, ports, lockfiles) — isolate. `tmux -L name`, bind `:0`, `mktemp -d`. You share a namespace with your host.
 
 ## Common Failures
 
 | Claim | Requires | Not Sufficient |
 |-------|----------|----------------|
+| Feature works | Running the app at its real surface: observed output | Tests pass, code looks right |
 | Tests pass | Test command output: 0 failures | Previous run, "should pass" |
 | Linter clean | Linter output: 0 errors | Partial check, extrapolation |
 | Build succeeds | Build command: exit 0 | Linter passing, logs look good |
-| Bug fixed | Test original symptom: passes | Code changed, assumed fixed |
+| Bug fixed | Trigger original symptom at real surface: resolved | Code changed, assumed fixed |
 | Regression test works | Red-green cycle verified | Test passes once |
 | Agent completed | VCS diff shows changes | Agent reports "success" |
 | Requirements met | Line-by-line checklist | Tests passing |
 
-## Red Flags - STOP
+## Red Flags — STOP
 
 - Using "should", "probably", "seems to"
 - Expressing satisfaction before verification ("Great!", "Perfect!", "Done!", etc.)
 - About to commit/push/PR without verification
 - Trusting agent success reports
 - Relying on partial verification
+- Planning steps that are all build/test/typecheck — no app at a real surface
 - Thinking "just this once"
 - Tired and wanting work over
-- **ANY wording implying success without having run verification**
+- **ANY wording implying success without having run verification at the real surface**
 
 ## Rationalization Prevention
 
 | Excuse | Reality |
 |--------|---------|
-| "Should work now" | RUN the verification |
+| "Should work now" | RUN the app at its surface |
 | "I'm confident" | Confidence ≠ evidence |
 | "Just this once" | No exceptions |
-| "Linter passed" | Linter ≠ compiler |
-| "Agent said success" | Verify independently |
+| "Linter passed" | Linter ≠ compiler ≠ running app |
+| "Tests pass" | CI passed — not that the change works at its surface |
+| "Agent said success" | Verify independently at the surface |
 | "I'm tired" | Exhaustion ≠ excuse |
 | "Partial check is enough" | Partial proves nothing |
 | "Different words so rule doesn't apply" | Spirit over letter |
 
 ## Key Patterns
 
-**Tests:**
+**Feature / Bug fix:**
 ```
-✅ [Run test command] [See: 34/34 pass] "All tests pass"
-❌ "Should pass now" / "Looks correct"
+✅ [Launch app] → [Navigate to changed surface] → [Observe: behavior matches claim]
+❌ "Tests pass" / "Looks correct" / "Should work now"
 ```
 
 **Regression tests (TDD Red-Green):**
@@ -89,21 +183,63 @@ Skip any step = lying, not verifying
 
 **Build:**
 ```
-✅ [Run build] [See: exit 0] "Build passes"
-❌ "Linter passed" (linter doesn't check compilation)
+✅ [Run build] [See: exit 0] then [Run app at surface]
+❌ "Linter passed" (linter doesn't check compilation or runtime behavior)
 ```
 
 **Requirements:**
 ```
-✅ Re-read plan → Create checklist → Verify each → Report gaps or completion
+✅ Re-read plan → Create checklist → Verify each at the surface → Report gaps or completion
 ❌ "Tests pass, phase complete"
 ```
 
 **Agent delegation:**
 ```
-✅ Agent reports success → Check VCS diff → Verify changes → Report actual state
+✅ Agent reports success → Check VCS diff → Run app at surface → Report actual state
 ❌ Trust agent report
 ```
+
+## Report Format
+
+```
+## Verification: <one-line what changed>
+
+**Verdict:** PASS | FAIL | BLOCKED | SKIP
+
+**Claim:** <what it's supposed to do — your read of the diff and/or
+the stated claim; note any mismatch>
+
+**Method:** <how you got a handle — which verifier/run-skill, or
+cold start; what you launched>
+
+### Steps
+
+Each step is one thing you did to the running app and what it showed.
+Build/install/checkout are setup, not steps. Test runs and typecheck
+don't belong here.
+
+1. ✅/❌/⚠️/🔍 <what you did to the running app> → <what you observed>
+   <evidence: the app's own output — pane capture, response body, screenshot>
+
+🔍 marks a probe — a step off the claim's happy path, trying to break it.
+At least one. A Steps list that's all ✅ and no 🔍 is a happy-path replay.
+
+### Findings
+<Things you noticed. Not just bugs — friction, surprises, anything
+a first-time user would trip on. Lead with ⚠️ for lines worth interrupting
+the reviewer for. Each probe gets a line even when it held.
+Empty is fine if nothing stuck out.>
+```
+
+**Verdicts:**
+- **PASS** — you ran the app, the change did what it should at its surface. Not: tests pass, builds clean, code looks right.
+- **FAIL** — you ran it and it doesn't. Or it breaks something else. Or claim and diff disagree materially. When in doubt, FAIL.
+- **BLOCKED** — couldn't reach a state where the change is observable. Build broke, env missing a dep, handle wouldn't come up. Not a verdict on the change. Say exactly where it stopped.
+- **SKIP** — no runtime surface exists. Docs-only, types-only, tests-only. Nothing went wrong; there's just nothing here to run. One line why.
+
+No partial pass. "3 of 4 passed" is FAIL until 4 passes or is explained away.
+
+**False PASS ships broken code; false FAIL costs one more human look.** Ambiguous output is FAIL with the raw capture attached — don't interpret.
 
 ## Why This Matters
 
@@ -134,6 +270,6 @@ From 24 failure memories:
 
 **No shortcuts for verification.**
 
-Run the command. Read the output. THEN claim the result.
+Run the app. Drive it to the surface. Capture what you see. THEN claim the result.
 
 This is non-negotiable.

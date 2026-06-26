@@ -7,7 +7,9 @@ description: Use when completing tasks, implementing major features, or before m
 
 Dispatch a code reviewer subagent to catch issues before they cascade. The reviewer gets precisely crafted context for evaluation — never your session's history. This keeps the reviewer focused on the work product, not your thought process, and preserves your own context for continued work.
 
-**Core principle:** Review early, review often.
+**Core principle:** Review early, review often. Every change gets reviewed before merge — no exceptions.
+
+**Approval standard:** "Approve when a change definitely improves overall code health, even if it isn't perfect."
 
 ## When to Request Review
 
@@ -44,6 +46,74 @@ Dispatch a `general-purpose` subagent, filling the template at [code-reviewer.md
 - Fix Important issues before proceeding
 - Note Minor issues for later
 - Push back if reviewer is wrong (with reasoning)
+
+## The Five-Axis Review
+
+When acting as reviewer, evaluate on these five axes:
+
+### 1. Correctness
+- Matches spec/task requirements?
+- Edge cases handled (null, empty, boundary values)?
+- Error paths handled?
+- Tests pass and test the right things?
+
+### 2. Readability
+- Names descriptive and consistent with project conventions?
+- Control flow straightforward?
+- No clever tricks that should be simplified?
+- Dead code removed?
+
+### 3. Architecture
+- Follows existing patterns?
+- Clean module boundaries?
+- Dependencies flowing in the right direction?
+
+### 4. Security
+- User input validated at system boundaries?
+- Secrets out of code and logs?
+- Auth checked where needed?
+- SQL queries parameterized?
+- External data treated as untrusted?
+
+### 5. Performance
+- N+1 query patterns?
+- Unbounded loops or unconstrained data fetching?
+- Missing pagination on list endpoints?
+
+## Change Sizing
+
+```
+~100 lines  → Good. Reviewable in one sitting.
+~300 lines  → Acceptable for a single logical change.
+~1000 lines → Too large. Split it.
+```
+
+Separate refactoring from feature work. Submit them as separate changes.
+
+## Severity Labels
+
+| Prefix | Meaning |
+|--------|---------|
+| *(none)* | Required before merge |
+| **Critical:** | Blocks merge (security, data loss, broken functionality) |
+| **Nit:** | Minor, optional |
+| **Consider:** | Suggestion, not required |
+| **FYI** | Informational only |
+
+## Review Checklist
+
+```markdown
+- [ ] Change matches spec/task requirements
+- [ ] Edge cases and error paths handled
+- [ ] Tests cover the change adequately
+- [ ] Names clear and consistent
+- [ ] No unnecessary complexity
+- [ ] No secrets in code
+- [ ] Input validated at boundaries
+- [ ] No injection vulnerabilities
+- [ ] No N+1 patterns
+- [ ] Build succeeds, tests pass
+```
 
 ## Example
 
@@ -93,6 +163,11 @@ You: [Fix progress indicators]
 - Skip review because "it's simple"
 - Ignore Critical issues
 - Proceed with unfixed Important issues
+- Merge PRs without review
+- Accept "LGTM" without evidence of actual review
+- Merge security-sensitive changes without security review
+- Accept bug fix PRs with no regression tests
+- Accept "I'll fix it later"
 - Argue with valid technical feedback
 
 **If reviewer wrong:**

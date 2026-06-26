@@ -13,7 +13,11 @@ Ensure work happens in an isolated workspace. Prefer your platform's native work
 
 **Announce at start:** "I'm using the using-git-worktrees skill to set up an isolated workspace."
 
-## Step 0: Detect Existing Isolation
+This skill covers two phases: **Setup** (before implementation begins) and **Cleanup** (after the MR/PR is created and branch is on remote).
+
+## Setup Phase
+
+### Step 0: Detect Existing Isolation
 
 **Before creating anything, check if you are already in an isolated workspace.**
 
@@ -44,23 +48,36 @@ Has the user already indicated their worktree preference in your instructions? I
 
 Honor any existing declared preference without asking. If the user declines consent, work in place and skip to Step 2.
 
-## Step 1: Create Isolated Workspace
+### Step 1: Create Isolated Workspace
 
 **You have two mechanisms. Try them in this order.**
 
-### 1a. Native Worktree Tools (preferred)
+#### 1a. Native Worktree Tools (preferred)
 
 The user has asked for an isolated workspace (Step 0 consent). Do you already have a way to create a worktree? It might be a tool with a name like `EnterWorktree`, `WorktreeCreate`, a `/worktree` command, or a `--worktree` flag. If you do, use it and skip to Step 2.
+
+**When using `EnterWorktree` with a branch name `<JIRA-CODE>/<feature-slug>`:**
+
+1. Call `EnterWorktree` with `name: "<JIRA-CODE>/<feature-slug>"`
+2. The tool creates branch `worktree-<JIRA-CODE>+<feature-slug>` — rename it immediately:
+   ```bash
+   git branch -m worktree-<JIRA-CODE>+<feature-slug> <JIRA-CODE>/<feature-slug>
+   ```
+3. Warn the user:
+   > **Worktree ready.** Ignored files (`.env`, etc.) are not copied — copy manually if you need to run the app locally:
+   > ```bash
+   > cp /path/to/repo/.env .
+   > ```
 
 Native tools handle directory placement, branch creation, and cleanup automatically. Using `git worktree add` when you have a native tool creates phantom state your harness can't see or manage.
 
 Only proceed to Step 1b if you have no native worktree tool available.
 
-### 1b. Git Worktree Fallback
+#### 1b. Git Worktree Fallback
 
 **Only use this if Step 1a does not apply** — you have no native worktree tool available. Create a worktree manually using git.
 
-#### Directory Selection
+##### Directory Selection
 
 Follow this priority order. Explicit user preference always beats observed filesystem state.
 
@@ -75,7 +92,7 @@ Follow this priority order. Explicit user preference always beats observed files
 
 3. **If there is no other guidance available**, default to `.worktrees/` at the project root.
 
-#### Safety Verification (project-local directories only)
+##### Safety Verification (project-local directories only)
 
 **MUST verify directory is ignored before creating worktree:**
 
@@ -87,7 +104,7 @@ git check-ignore -q .worktrees 2>/dev/null || git check-ignore -q worktrees 2>/d
 
 **Why critical:** Prevents accidentally committing worktree contents to repository.
 
-#### Create the Worktree
+##### Create the Worktree
 
 ```bash
 # Determine path based on chosen location
@@ -99,7 +116,7 @@ cd "$path"
 
 **Sandbox fallback:** If `git worktree add` fails with a permission error (sandbox denial), tell the user the sandbox blocked worktree creation and you're working in the current directory instead. Then run setup and baseline tests in place.
 
-## Step 2: Project Setup
+### Step 2: Project Setup
 
 Auto-detect and run appropriate setup:
 
@@ -118,7 +135,7 @@ if [ -f pyproject.toml ]; then poetry install; fi
 if [ -f go.mod ]; then go mod download; fi
 ```
 
-## Step 3: Verify Clean Baseline
+### Step 3: Verify Clean Baseline
 
 Run tests to ensure workspace starts clean:
 
@@ -131,12 +148,34 @@ npm test / cargo test / pytest / go test ./...
 
 **If tests pass:** Report ready.
 
-### Report
+#### Report
 
 ```
 Worktree ready at <full-path>
 Tests passing (<N> tests, 0 failures)
 Ready to implement <feature-name>
+```
+
+## Cleanup Phase
+
+Called after the MR/PR URL is obtained and the branch is on remote — local commits are safe to discard.
+
+**Only begin cleanup after the branch has been pushed to remote (Step 5 of /dev).**
+
+1. Call `ExitWorktree` with `action: "remove"`
+   - If tool refuses (unmerged local commits), re-invoke with `discard_changes: true`
+2. Inform the user:
+   > **Worktree removed.** To test the feature locally:
+   > ```bash
+   > git fetch origin && git switch <JIRA-CODE>/<feature-slug>
+   > ```
+
+If no native `ExitWorktree` tool is available, remove the worktree manually:
+
+```bash
+git worktree remove "$path"
+# If it refuses due to untracked/modified files:
+git worktree remove --force "$path"
 ```
 
 ## Quick Reference
@@ -146,6 +185,7 @@ Ready to implement <feature-name>
 | Already in linked worktree | Skip creation (Step 0) |
 | In a submodule | Treat as normal repo (Step 0 guard) |
 | Native worktree tool available | Use it (Step 1a) |
+| EnterWorktree used | Rename branch from `worktree-*` prefix immediately |
 | No native tool | Git worktree fallback (Step 1b) |
 | `.worktrees/` exists | Use it (verify ignored) |
 | `worktrees/` exists | Use it (verify ignored) |
@@ -155,6 +195,8 @@ Ready to implement <feature-name>
 | Permission error on create | Sandbox fallback, work in place |
 | Tests fail during baseline | Report failures + ask |
 | No package.json/Cargo.toml | Skip dependency install |
+| Cleanup requested | Ensure branch is on remote first |
+| ExitWorktree refuses | Re-invoke with `discard_changes: true` |
 
 ## Common Mistakes
 
@@ -167,6 +209,21 @@ Ready to implement <feature-name>
 
 - **Problem:** Creating a nested worktree inside an existing one
 - **Fix:** Always run Step 0 before creating anything
+
+### Skipping branch rename
+
+- **Problem:** The `worktree-*` prefix won't push cleanly to the expected remote branch name
+- **Fix:** After `EnterWorktree`, immediately rename: `git branch -m worktree-<JIRA-CODE>+<feature-slug> <JIRA-CODE>/<feature-slug>`
+
+### Not copying ignored files
+
+- **Problem:** Dev server fails with missing env vars; user assumes worktree is broken
+- **Fix:** Warn the user after worktree creation to copy `.env` and other ignored files manually
+
+### Cleanup before push
+
+- **Problem:** Removes local commits before they are safe on remote
+- **Fix:** Always push the branch first, then clean up
 
 ### Skipping ignore verification
 
@@ -189,14 +246,19 @@ Ready to implement <feature-name>
 - Create a worktree when Step 0 detects existing isolation
 - Use `git worktree add` when you have a native worktree tool (e.g., `EnterWorktree`). This is the #1 mistake — if you have it, use it.
 - Skip Step 1a by jumping straight to Step 1b's git commands
+- Skip branch rename after `EnterWorktree` — the `worktree-*` prefix will cause push failures
 - Create worktree without verifying it's ignored (project-local)
 - Skip baseline test verification
 - Proceed with failing tests without asking
+- Run cleanup before the branch is pushed to remote
 
 **Always:**
 - Run Step 0 detection first
 - Prefer native tools over git fallback
+- Rename branch immediately after `EnterWorktree`
+- Warn user to copy ignored files (`.env`, etc.) after worktree creation
 - Follow directory priority: explicit instructions > existing project-local directory > default
 - Verify directory is ignored for project-local
 - Auto-detect and run project setup
 - Verify clean test baseline
+- Confirm branch is on remote before cleanup

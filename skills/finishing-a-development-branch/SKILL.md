@@ -1,6 +1,6 @@
 ---
 name: finishing-a-development-branch
-description: Use when implementation is complete, all tests pass, and you need to decide how to integrate the work - guides completion of development work by presenting structured options for merge, PR, or cleanup
+description: Use when implementation is complete, all tests pass, and you need to decide how to integrate the work - guides completion of development work by presenting structured options for merge, MR/PR, or cleanup
 ---
 
 # Finishing a Development Branch
@@ -12,6 +12,47 @@ Guide completion of development work by presenting clear options and handling ch
 **Core principle:** Verify tests → Detect environment → Present options → Execute choice → Clean up.
 
 **Announce at start:** "I'm using the finishing-a-development-branch skill to complete this work."
+
+## Branching Conventions
+
+```
+feature/<description>
+fix/<description>
+chore/<description>
+```
+
+Branches live 1-3 days max. Keep main always deployable.
+
+Git worktrees for parallel agent work:
+```bash
+git worktree add ../project-feature-a feature/task-creation
+```
+
+## Commit Format
+
+```
+<type>: <short description>
+
+<optional body with rationale>
+```
+
+Types: `feat`, `fix`, `refactor`, `test`, `docs`, `chore`
+
+**Size targets:**
+- ~100 lines: Optimal
+- ~300 lines: Acceptable for a single logical change
+- ~1000 lines: Split it
+
+## Pre-Commit Checklist
+
+Before any merge or push:
+
+- [ ] Review staged changes
+- [ ] Scan for secrets/credentials — never commit `.env`, `node_modules/`, `dist/`, build outputs
+- [ ] Run tests, linting, type checking
+- [ ] Each commit addresses one logical concern
+- [ ] No vague messages ("fix", "update", "wip")
+- [ ] No formatting changes mixed with behavior changes
 
 ## The Process
 
@@ -30,7 +71,7 @@ Tests failing (<N> failures). Must fix before completing:
 
 [Show failures]
 
-Cannot proceed with merge/PR until tests pass.
+Cannot proceed with merge/MR until tests pass.
 ```
 
 Stop. Don't proceed to Step 2.
@@ -71,7 +112,7 @@ Or ask: "This branch split from main - is that correct?"
 Implementation complete. What would you like to do?
 
 1. Merge back to <base-branch> locally
-2. Push and create a Pull Request
+2. Push and create a Merge Request
 3. Keep the branch as-is (I'll handle it later)
 4. Discard this work
 
@@ -83,7 +124,7 @@ Which option?
 ```
 Implementation complete. You're on a detached HEAD (externally managed workspace).
 
-1. Push as new branch and create a Pull Request
+1. Push as new branch and create a Merge Request
 2. Keep as-is (I'll handle it later)
 3. Discard this work
 
@@ -118,14 +159,19 @@ Then: Cleanup worktree (Step 6), then delete branch:
 git branch -d <feature-branch>
 ```
 
-#### Option 2: Push and Create PR
+#### Option 2: Push and Create MR
 
 ```bash
 # Push branch
 git push -u origin <feature-branch>
+
+# Open Merge Request with glab
+glab mr create --fill
 ```
 
-**Do NOT clean up worktree** — user needs it alive to iterate on PR feedback.
+`glab mr create --fill` pre-fills title and description from commits. Add `--assignee`, `--label`, or `--target-branch` as needed.
+
+**Do NOT clean up worktree** — user needs it alive to iterate on MR feedback.
 
 #### Option 3: Keep As-Is
 
@@ -181,19 +227,29 @@ git worktree prune  # Self-healing: clean up any stale registrations
 
 **Otherwise:** The host environment (harness) owns this workspace. Do NOT remove it. If your platform provides a workspace-exit tool, use it. Otherwise, leave the workspace in place.
 
+## Post-Change Summary
+
+After completing any option, output:
+
+```
+CHANGES MADE: [files modified with specific alterations]
+DIDN'T TOUCH: [intentionally excluded items]
+POTENTIAL CONCERNS: [assumptions requiring validation]
+```
+
 ## Quick Reference
 
 | Option | Merge | Push | Keep Worktree | Cleanup Branch |
 |--------|-------|------|---------------|----------------|
 | 1. Merge locally | yes | - | - | yes |
-| 2. Create PR | - | yes | yes | - |
+| 2. Create MR | - | yes | yes | - |
 | 3. Keep as-is | - | - | yes | - |
 | 4. Discard | - | - | - | yes (force) |
 
 ## Common Mistakes
 
 **Skipping test verification**
-- **Problem:** Merge broken code, create failing PR
+- **Problem:** Merge broken code, create failing MR
 - **Fix:** Always verify tests before offering options
 
 **Open-ended questions**
@@ -201,7 +257,7 @@ git worktree prune  # Self-healing: clean up any stale registrations
 - **Fix:** Present exactly 4 structured options (or 3 for detached HEAD)
 
 **Cleaning up worktree for Option 2**
-- **Problem:** Remove worktree user needs for PR iteration
+- **Problem:** Remove worktree user needs for MR iteration
 - **Fix:** Only cleanup for Options 1 and 4
 
 **Deleting branch before removing worktree**
@@ -226,10 +282,14 @@ git worktree prune  # Self-healing: clean up any stale registrations
 - Proceed with failing tests
 - Merge without verifying tests on result
 - Delete work without confirmation
-- Force-push without explicit request
+- Force-push to shared branches
 - Remove a worktree before confirming merge success
 - Clean up worktrees you didn't create (provenance check)
 - Run `git worktree remove` from inside the worktree
+- Use `gh` — this project uses GitLab; always use `glab`
+- Commit `node_modules/`, `dist/`, `.env`, or build outputs
+- Use vague commit messages ("fix", "update", "wip")
+- Mix formatting changes with behavior changes
 
 **Always:**
 - Verify tests before offering options
@@ -239,3 +299,5 @@ git worktree prune  # Self-healing: clean up any stale registrations
 - Clean up worktree for Options 1 & 4 only
 - `cd` to main repo root before worktree removal
 - Run `git worktree prune` after removal
+- Use `glab mr create` for Merge Requests
+- Output post-change summary after completion

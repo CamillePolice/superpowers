@@ -18,6 +18,21 @@ Assume they are a skilled developer, but know almost nothing about our toolset o
 **Save plans to:** `docs/superpowers/plans/YYYY-MM-DD-<feature-name>.md`
 - (User preferences for plan location override this default)
 
+## When to Use
+
+- You have a spec to transform into implementable units
+- The task feels too large or unclear to start
+- Work needs to be parallelized across agents
+- Implementation order is ambiguous
+
+## The Process
+
+1. **Plan mode** — read-only, understand the full scope
+2. **Dependency graph** — identify what blocks what
+3. **Vertical slicing** — build complete feature paths, not layers
+4. **Write tasks** — with full structure (see below)
+5. **Order** — dependencies first, high risks early
+
 ## Scope Check
 
 If the spec covers multiple independent subsystems, it should have been broken into sub-project specs during brainstorming. If it wasn't, suggest breaking this into separate plans — one per subsystem. Each plan should produce working, testable software on its own.
@@ -41,6 +56,18 @@ configuration, scaffolding, and documentation steps into the task whose
 deliverable needs them; split only where a reviewer could meaningfully
 reject one task while approving its neighbor. Each task ends with an
 independently testable deliverable.
+
+## Task Sizing
+
+| Size | Scope |
+|---|---|
+| XS | Single function |
+| S | Single file |
+| M | Several related files |
+| L | Acceptable limit |
+| XL | Too large — break it down |
+
+Agents perform best on S and M tasks.
 
 ## Bite-Sized Task Granularity
 
@@ -81,6 +108,9 @@ include this section.]
 ````markdown
 ### Task N: [Component Name]
 
+**Estimated size:** S / M / L
+**Dependencies:** [task numbers that must complete first, or "none"]
+
 **Files:**
 - Create: `exact/path/to/file.py`
 - Modify: `exact/path/to/existing.py:123-145`
@@ -91,6 +121,10 @@ include this section.]
 - Produces: [what later tasks rely on — exact function names, parameter
   and return types. A task's implementer sees only their own task; this
   block is how they learn the names and types neighboring tasks use.]
+
+**Acceptance criteria:**
+- [Specific, verifiable condition]
+- [Specific, verifiable condition]
 
 - [ ] **Step 1: Write the failing test**
 
@@ -135,6 +169,15 @@ Every step must contain the actual content an engineer needs. These are **plan f
 - Steps that describe what to do without showing how (code blocks required for code steps)
 - References to types, functions, or methods not defined in any task
 
+## Red Flags
+
+- Starting without a written task list
+- Tasks without acceptance criteria
+- No verification steps
+- XL tasks not broken down
+- Dependencies ignored
+- Placeholders in any step
+
 ## Remember
 - Exact file paths always
 - Complete code in every step — if a step changes code, show the code
@@ -150,6 +193,10 @@ After writing the complete plan, look at the spec with fresh eyes and check the 
 **2. Placeholder scan:** Search your plan for red flags — any of the patterns from the "No Placeholders" section above. Fix them.
 
 **3. Type consistency:** Do the types, method signatures, and property names you used in later tasks match what you defined in earlier tasks? A function called `clearLayers()` in Task 3 but `clearFullLayers()` in Task 7 is a bug.
+
+**4. Size check:** Are any tasks XL? Break them down.
+
+**5. Dependency check:** Are task dependencies explicit and ordered correctly?
 
 If you find issues, fix them inline. No need to re-review — just fix and move on. If you find a spec requirement with no task, add the task.
 
