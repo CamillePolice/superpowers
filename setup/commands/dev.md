@@ -201,6 +201,8 @@ Use the Agent tool with:
   >
   > **Your role: plan executor.** Use the `subagent-driven-development` skill if tasks are mostly independent (dispatch a fresh subagent per task + task review after each). Use `executing-plans` if tasks are strongly sequential. In both cases: load the latest plan in `~/.claude/plans/${CLAUDE_PROJECT:-default}/plans/`, implement each task step by step, run each verify step, update checkboxes as you go, commit after each completed task. Do NOT pause between tasks to check in — execute continuously. Return a summary of what was done.
   >
+  > **npm packages:** Before running any `npm install`, `npm add`, or adding any dependency to `package.json`, invoke the `npm-package-vetting` skill. Do not install without vetting first.
+  >
   > **While executing:** whenever you encounter an unexpected issue, non-obvious workaround, framework gotcha, or reusable pattern, append a note to `/tmp/learning-notes-${CLAUDE_PROJECT:-default}.md` using this format:
   > ```
   > [tag] technology — precise description of the problem — solution applied
