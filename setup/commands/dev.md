@@ -15,6 +15,23 @@ When a task file is referenced: read it and all images in its folder before spaw
 
 ---
 
+## Step −3 — Brainstorm (si pas de task file)
+
+**Seulement si `TASK_FOLDER = ""`** (feature décrite en texte libre, sans fichier de cadrage).
+
+Invoke the `brainstorming` skill. Follow it exactly — it will:
+- Explore project context and recent commits
+- Ask clarifying questions one at a time
+- Propose 2–3 approaches with trade-offs and a recommendation
+- Present a design for user approval
+- Write a design doc to `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md`
+
+**Do NOT proceed to Step −2 until brainstorming completes and the user has approved the design.**
+
+If a task file was provided (`TASK_FOLDER ≠ ""`): feature is already scoped — skip this step entirely.
+
+---
+
 ## Step −2 — Rename conversation
 
 Extract the Jira ticket code from the feature description or task file (pattern `[A-Z]+-\d+`, e.g. `PMPFLOW-369`).
@@ -106,7 +123,7 @@ Use the Agent tool with:
   >
   > ---
   >
-  > Produce the full implementation plan. Ask clarification questions whenever something is ambiguous — return them clearly labeled before the plan. **Do NOT write code in the plan** — describe what each step does in plain language. Only include a code snippet when a precise technical choice needs illustration (e.g. a specific API signature or SQL query). Include a commit step per task. Save the plan to `~/.claude/plans/${CLAUDE_PROJECT:-default}/plans/YYYY-MM-DD-<slug>.md`. Return: (1) any clarification questions if needed, (2) the saved plan path, (3) a short summary of tasks.
+  > Use the `writing-plans` skill. Follow it exactly — it will: (1) map all files to create/modify and their responsibilities before defining tasks, (2) produce bite-sized tasks each with acceptance criteria, verification steps, affected files, and a commit, (3) apply TDD, YAGNI, DRY, frequent commits. Ask clarification questions whenever something is ambiguous — return them clearly labeled before the plan. **Do NOT write code in the plan** — describe what each step does in plain language. Only include a code snippet when a precise technical choice needs illustration (e.g. a specific API signature or SQL query). Save the plan to `~/.claude/plans/${CLAUDE_PROJECT:-default}/plans/YYYY-MM-DD-<slug>.md`. Return: (1) any clarification questions if needed, (2) the saved plan path, (3) a short summary of tasks.
   >
   > ıı
 
@@ -182,7 +199,7 @@ Use the Agent tool with:
   >
   > ---
   >
-  > **Your role: plan executor.** Load and execute the latest plan in `~/.claude/plans/${CLAUDE_PROJECT:-default}/plans/`. Implement each task step by step. Run each verify step. Update checkboxes as you go. Commit after each completed task. Return a summary of what was done.
+  > **Your role: plan executor.** Use the `subagent-driven-development` skill if tasks are mostly independent (dispatch a fresh subagent per task + task review after each). Use `executing-plans` if tasks are strongly sequential. In both cases: load the latest plan in `~/.claude/plans/${CLAUDE_PROJECT:-default}/plans/`, implement each task step by step, run each verify step, update checkboxes as you go, commit after each completed task. Do NOT pause between tasks to check in — execute continuously. Return a summary of what was done.
   >
   > **While executing:** whenever you encounter an unexpected issue, non-obvious workaround, framework gotcha, or reusable pattern, append a note to `/tmp/learning-notes-${CLAUDE_PROJECT:-default}.md` using this format:
   > ```
@@ -215,7 +232,7 @@ Use the Agent tool with:
 - `description`: "Verification loop"
 - `prompt`:
 
-  > Apply the `verification-loop` skill to the changes just implemented.
+  > Apply the `verification-before-completion` skill first (Iron Law: no completion claim without fresh verification evidence). Then apply the `verification-loop` skill for stack-specific commands.
   >
   > **Step 1 — Change inventory**
   > ```bash
