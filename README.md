@@ -197,6 +197,91 @@ For local development, run Pi with this checkout loaded as a temporary package:
 pi -e /path/to/superpowers
 ```
 
+---
+
+## Personal Setup (fork CamillePolice/superpowers)
+
+This fork extends upstream Superpowers with a complete personal Claude Code environment under `setup/`. It stays trivially synced with upstream: `main` is a pure mirror, all additions are additive-only files.
+
+### What's added
+
+**20 additional skills** (in `skills/`, alongside upstream):
+
+| Skill | Purpose |
+|---|---|
+| `code-review-and-quality` | 5-axis review (correctness, readability, architecture, security, performance) |
+| `code-simplification` | Refactor for readability while preserving behavior |
+| `dev-worktree` | Worktree lifecycle for the `/dev` workflow (setup + cleanup phases) |
+| `documentation-and-adrs` | ADRs and API change documentation |
+| `git-diff-review` | Diff analysis between two branches |
+| `git-workflow-and-versioning` | Disciplined git workflow, Conventional Commits |
+| `gitlab-mr-create` | GitLab MR with structured Claranet description format |
+| `gitlab-mr-review` | Full MR review loop: fetch comments → fix → test → reply |
+| `idea-refine` | Lightweight clarification (1 question at a time) before planning |
+| `incremental-implementation` | Thin vertical slices — implement, test, verify, commit, repeat |
+| `npm-package-vetting` | Security/maintenance check before any `npm install` |
+| `obsidian-markdown` | Obsidian-flavored Markdown (wikilinks, callouts, embeds) |
+| `pr-feedback-formatter` | Format code review feedback as structured Markdown |
+| `security` | Security-by-design (6-layer: input, identity, data, resilience, supply chain, frontend) |
+| `security-and-hardening` | OWASP Top 10 review before merging security-sensitive changes |
+| `source-driven-development` | Ground framework decisions in official documentation |
+| `spec-driven-development` | Write spec before writing code |
+| `strategy-compact` | Context compaction at session inflection points |
+| `vault-context` | Load project context from Obsidian vault at agent startup |
+| `verification-loop` | Stack-specific verification commands (Angular tsc/ng test, Symfony phpstan/phpunit) + report template |
+
+**`setup/` — installer and personal config:**
+
+```
+setup/
+  install.sh              # Modular installer (--core --agents --obsidian --rtk --mcp --cron --sync)
+  modules/                # claude-core, agents, obsidian, rtk, mcp, cron, utils, superpowers-sync
+  agents/                 # 12 specialized agents (angular-expert, symfony-expert, nuxt-expert,
+                          #   planner, executor, code-reviewer, git-diff-reviewer,
+                          #   git-smart-commit, build-error-resolver, security-expert,
+                          #   tech-writer, archforge)
+  commands/               # 9 commands: dev, prime, ingest, query, save, capture-learning,
+                          #   lint, notebooklm, context-engineering
+  config/                 # CLAUDE.md, RTK.md, settings.json, profiles/, rules/, hooks/
+  obsidian-vault/         # Vault template (wiki/index, wiki/Daily, raw/learnings...)
+  scripts/                # auto-capture-learning.sh
+```
+
+**`/dev` workflow enhancements** (guilty-spark command):
+
+- **Step −3**: `brainstorming` skill gates execution when no task file — design approval required before planning
+- **Step 1**: `writing-plans` methodology in planner — file map first, bite-sized tasks, TDD/YAGNI/DRY
+- **Step 3**: `subagent-driven-development` per task + `npm-package-vetting` before any `npm install`
+- **Step 3.6**: `verification-before-completion` (Iron Law) + `verification-loop` (stack-specific commands)
+- **Step 4**: `code-review-and-quality` 5-axis review before MR
+- **Step 4.5**: `security-and-hardening` on auth/token/API diffs
+- **Step 5**: `gitlab-mr-create` with Claranet MR format
+
+### Install
+
+```bash
+git clone git@github.com:CamillePolice/superpowers.git
+cd superpowers
+./setup/install.sh --all
+```
+
+Flags: `--core` · `--agents` · `--obsidian` · `--rtk` · `--mcp` · `--cron` · `--sync` · `--caveman` · `--all`
+
+### Sync with upstream
+
+```bash
+./setup/install.sh --sync   # git fetch upstream + merge --ff-only + reinstall
+```
+
+Or manually:
+
+```bash
+git fetch upstream && git merge --ff-only upstream/main
+./setup/install.sh --all
+```
+
+`--ff-only` guarantees zero conflicts as long as `main` stays a pure upstream mirror (never commit directly to `main`).
+
 The Pi package loads the Superpowers skills and a small extension that injects the `using-superpowers` bootstrap at session startup and again after compaction. Pi has native skills, so no compatibility `Skill` tool is required. Subagent and task-list tools remain optional Pi companion packages.
 
 ## The Basic Workflow
