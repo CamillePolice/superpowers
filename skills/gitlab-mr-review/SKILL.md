@@ -83,7 +83,7 @@ Fix order: blocking correctness issues first → simple fixes → complex refact
 
 ## Step 5 — Commit
 
-Use `generic-conventional-commits:generating-git-commits` skill (or `caveman:caveman-commit`).
+Use the `git-smart-commit` agent (`@git-smart-commit`).
 
 One commit covering all review fixes. Include in the body:
 - What changed and why (reviewer's concern)
