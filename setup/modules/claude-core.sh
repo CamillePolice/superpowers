@@ -89,11 +89,6 @@ install_config() {
         chmod +x "$HOOKS_DIR/$(basename "$f")"
     done
 
-    # Commands
-    for f in "$REPO_DIR/config/commands/"*.md; do
-        copy_file "$f" "$commands_dir/$(basename "$f")"
-    done
-
     log_ok "Base config installed"
 }
 
