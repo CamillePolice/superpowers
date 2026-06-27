@@ -62,9 +62,9 @@ Store DOMAIN_CONTEXT as a variable — it will be injected into every sub-agent 
 
 Read the following files and concatenate into `VAULT_CONTEXT`:
 
-1. `/Users/cpo/Documents/obsidian/claude/wiki/index.md` — global index
-2. Latest file in `/Users/cpo/Documents/obsidian/claude/wiki/Daily/` (sort by name desc, take first) — last session summary
-3. `/Users/cpo/Documents/obsidian/claude/wiki/${CLAUDE_PROJECT}/index.md` — project index (skip if file absent or `$CLAUDE_PROJECT` is empty/`default`)
+1. `~/vault/wiki/index.md` — global index
+2. Latest file in `~/vault/wiki/Daily/` (sort by name desc, take first) — last session summary
+3. `~/vault/wiki/${CLAUDE_PROJECT}/index.md` — project index (skip if file absent or `$CLAUDE_PROJECT` is empty/`default`)
 
 If all files are absent → set `VAULT_CONTEXT = "No vault context available."`
 
@@ -199,7 +199,7 @@ Use the Agent tool with:
   >
   > ---
   >
-  > **Your role: plan executor.** Use the `subagent-driven-development` skill if tasks are mostly independent (dispatch a fresh subagent per task + task review after each). Use `executing-plans` if tasks are strongly sequential. In both cases: load the latest plan in `~/.claude/plans/${CLAUDE_PROJECT:-default}/plans/`, implement each task step by step, run each verify step, update checkboxes as you go, commit after each completed task. Do NOT pause between tasks to check in — execute continuously. Return a summary of what was done.
+  > **Your role: plan executor.** Use the `subagent-driven-development` skill if tasks are mostly independent (dispatch a fresh subagent per task + task review after each). Use `executing-plans` if tasks are strongly sequential. In both cases: load the latest plan in `~/.claude/plans/${CLAUDE_PROJECT:-default}/plans/`, implement each task step by step, run each verify step, update checkboxes as you go, use the `git-smart-commit` agent (`@git-smart-commit`) to commit after each completed task. Do NOT pause between tasks to check in — execute continuously. Return a summary of what was done.
   >
   > **npm packages:** Before running any `npm install`, `npm add`, or adding any dependency to `package.json`, invoke the `npm-package-vetting` skill. Do not install without vetting first.
   >

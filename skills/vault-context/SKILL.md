@@ -18,13 +18,13 @@ If output is empty or `global` → skip entirely. Do not read any vault files.
 
 ### Step 2 — Load project index
 
-Read `/Users/cpo/Documents/obsidian/claude/wiki/$CLAUDE_PROJECT/index.md`.
+Read `~/vault/wiki/$CLAUDE_PROJECT/index.md`.
 
 If the file does not exist → skip silently. Do not warn the user.
 
 ### Step 3 — Load global index
 
-Read `/Users/cpo/Documents/obsidian/claude/wiki/index.md`.
+Read `~/vault/wiki/index.md`.
 
 This gives a map of available global patterns (Intelligence, Resources). Do NOT read the individual notes — use the index only as a directory. If the task requires a specific global pattern, read that note on demand.
 
