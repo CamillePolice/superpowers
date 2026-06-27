@@ -1,0 +1,103 @@
+{
+  "attribution": {
+    "commit": "",
+    "pr": ""
+  },
+  "model": "opusplan",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/rtk-rewrite.sh"
+          },
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/toon-rewrite.sh"
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "matcher": "permission_prompt|idle_prompt",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "afplay /System/Library/Sounds/Submarine.aiff 2>/dev/null &"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if [ -s \"/tmp/learning-notes-${CLAUDE_PROJECT:-default}.md\" ]; then echo \"[session-end] Learning notes present (project: ${CLAUDE_PROJECT:-default}) - run capture-learning before closing\" >&2; fi"
+          },
+          {
+            "type": "command",
+            "command": "afplay /System/Library/Sounds/Hero.aiff 2>/dev/null &"
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/detect-stack.sh"
+          }
+        ]
+      }
+    ]
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "bunx -y ccstatusline@latest",
+    "padding": 0
+  },
+  "enabledPlugins": {
+    "context7@claude-plugins-official": false,
+    "frontend-design@claude-plugins-official": true,
+    "caveman@caveman": true,
+    "code-review@claude-plugins-official": true,
+    "skill-creator@claude-plugins-official": true,
+    "superpowers@claude-plugins-official": true,
+    "veille-techno@veille-techno": true,
+    "playwright@claude-plugins-official": true
+  },
+  "extraKnownMarketplaces": {
+    "claranet": {
+      "source": {
+        "source": "git",
+        "url": "git@git.fr.clara.net:claranet/projects/ai/claude-code.git"
+      }
+    },
+    "veille-techno": {
+      "source": {
+        "source": "github",
+        "repo": "CamilleRoux/veille-techno"
+      }
+    }
+  },
+  "skipDangerousModePermissionPrompt": true,
+  "blockedCommands": [
+    "rm -rf",
+    "dd if=/dev/zero",
+    "kill -9 -1",
+    "chmod -R 777",
+    "shutdown",
+    "reboot",
+    "curl | bash",
+    "wget | sh",
+    "git push --force",
+    "git clean -fdx"
+  ]
+}
