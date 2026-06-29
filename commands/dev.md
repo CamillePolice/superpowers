@@ -15,6 +15,23 @@ When a task file is referenced: read it and all images in its folder before spaw
 
 ---
 
+## Step −3 — Brainstorm (if no task file)
+
+**Only if `TASK_FOLDER = ""`** (feature described as free text, no scoping file).
+
+Invoke the `brainstorming` skill. Follow it exactly — it will:
+- Explore project context and recent commits
+- Ask clarifying questions one at a time
+- Propose 2–3 approaches with trade-offs and a recommendation
+- Present a design for user approval
+- Write a design doc to `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md`
+
+**Do NOT proceed to Step −2 until brainstorming completes and the user has approved the design.**
+
+If a task file was provided (`TASK_FOLDER ≠ ""`): feature is already scoped — skip this step entirely.
+
+---
+
 ## Step −2 — Rename conversation
 
 Extract the Jira ticket code from the feature description or task file (pattern `[A-Z]+-\d+`, e.g. `PMPFLOW-369`).
@@ -206,7 +223,7 @@ Use the Agent tool with:
   >
   > ---
   >
-  > **Your role: plan executor.** Load and execute the latest plan in `~/.claude/plans/${CLAUDE_PROJECT:-default}/plans/`. Implement each task step by step. Run each verify step. Update checkboxes as you go. Commit after each completed task. Return a summary of what was done.
+  > **Your role: plan executor.** Apply the `superpowers:executing-plans` skill. Load and execute the latest plan in `~/.claude/plans/${CLAUDE_PROJECT:-default}/plans/`. Execute each task as a thin vertical slice: implement → test → verify → commit. Run each verify step. Update checkboxes as you go. Return a summary of what was done.
   >
   > **While executing:** whenever you encounter an unexpected issue, non-obvious workaround, framework gotcha, or reusable pattern, append a note to `/tmp/learning-notes-${CLAUDE_PROJECT:-default}.md` using this format:
   > ```
@@ -290,7 +307,7 @@ Use the Agent tool with:
 
 **If verdict is `❌ BLOCKED`:**
 - Display the report to the user
-- Re-invoke `<EXECUTOR_AGENT>` to fix the issues, then re-run Step 3.6 (max 2 retries)
+- Re-invoke `<EXECUTOR_AGENT>` with the `superpowers:systematic-debugging` skill to diagnose root cause before fixing, then re-run Step 3.6 (max 2 retries)
 - If still blocked after 2 retries → report to user and stop
 
 ---
@@ -352,7 +369,7 @@ Use the Agent tool with:
 - Display the critical issues to the user
 - Ask:
   > **Code review found blocking issues.** Reply with one of:
-  > - `fix` — re-invoke the executor to address the issues, then re-run the review (loop back to Step 4)
+  > - `fix` — re-invoke the executor with the `superpowers:systematic-debugging` skill to diagnose and fix each blocking issue, then re-run the review (loop back to Step 4)
   > - `skip` — bypass the review and proceed to MR creation (not recommended)
   > - `no` — cancel
 
